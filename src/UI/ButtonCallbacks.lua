@@ -116,6 +116,16 @@ function G.FUNCS.dv_hist_update_runs_page(args)
    runs_wrap.UIBox:recalculate()
 end
 
+function G.FUNCS.dv_hist_delete_run(e)
+   if not e then return end
+
+   local path_to_delete = (G.SETTINGS.profile or 1) .."/DVHistory/".. e.config.ref_table.run_path
+   love.filesystem.remove(path_to_delete)
+
+   -- Refresh the UI view
+   G.FUNCS.dv_hist_select_run(e)
+end
+
 function G.FUNCS.dv_hist_load_run(e)
    if not e then return end
 
