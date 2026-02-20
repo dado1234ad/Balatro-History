@@ -76,8 +76,14 @@ function DV.HIST.get_stored_runs_page(args)
    for i = 1, actual_runs_on_page do
       local next_idx = offset + i
 
-      local run_data = get_compressed(G.SETTINGS.profile .."/DVHistory/".. run_paths[next_idx])
-      if run_data ~= nil then run_data = STR_UNPACK(run_data) end
+      local run_data_str = get_compressed(G.SETTINGS.profile .."/DVHistory/".. run_paths[next_idx])
+      local run_data = nil
+      if run_data_str ~= nil then
+         if string.find(run_data_str, "%{GAME % = %{won = true%}%}") then
+            run_data_str = string.gsub(run_data_str, "if.-return.-%{GAME.-won.-=.-true.-%}.-end", "")
+         end
+         run_data = STR_UNPACK(run_data_str)
+      end
 
       table.insert(run_nodes, DV.HIST.get_stored_run_node(run_paths[next_idx], run_data))
    end
@@ -105,9 +111,17 @@ function DV.HIST.get_stored_run_node(run_path, run_data)
    local tooltip = {dv=true, filler={func = DV.HIST.get_run_overlay, args = run_data}}
 
    return
-      {n=G.UIT.R, config={align = "cm", padding = 0.05}, nodes={
-          {n=G.UIT.R, config={button = "dv_hist_load_run", ref_table = {run_path = run_path, run_data = run_data}, align = "cl", colour = G.C.RED, minw = 9.6, padding = 0.1, r = 0.1, on_demand_tooltip = tooltip, hover = true, shadow = true}, nodes={
-              {n=G.UIT.T, config={text = run_name, colour=G.C.UI.TEXT_LIGHT, scale = 0.45}}
+      {n=G.UIT.R, config={align = "cm", padding = 0.05, minw = 11}, nodes={
+          {n=G.UIT.C, config={align = "cl"}, nodes={
+              {n=G.UIT.R, config={button = "dv_hist_load_run", ref_table = {run_path = run_path, run_data = run_data}, align = "cl", colour = G.C.RED, minw = 8.6, padding = 0.1, r = 0.1, on_demand_tooltip = tooltip, hover = true, shadow = true}, nodes={
+                  {n=G.UIT.T, config={text = run_name, colour=G.C.UI.TEXT_LIGHT, scale = 0.45}}
+              }}
+          }},
+          {n=G.UIT.C, config={align = "cr", minw = 0.4}, nodes={}},
+          {n=G.UIT.C, config={align = "cm"}, nodes={
+              {n=G.UIT.R, config={button = "dv_hist_delete_run", ref_table = {run_path = run_path}, align = "cm", colour = G.C.RED, minw = 0.8, minh = 0.7, r = 0.1, hover = true, shadow = true}, nodes={
+                  {n=G.UIT.T, config={text = "X", colour=G.C.UI.TEXT_LIGHT, scale = 0.45}}
+              }}
           }}
       }}
 end
@@ -125,10 +139,10 @@ function DV.HIST.get_run_overlay(run)
           -- Seed in the top-left, and save date in the top-right:
            {n=G.UIT.R, config={align = "cm"}, nodes={
                {n=G.UIT.C, config={align = "cl", minw = ov_width/2.2}, nodes={
-                   {n=G.UIT.T, config={text = "Seed: " .. run.GAME.pseudorandom.seed, align = "cl", colour = G.C.UI.TEXT_LIGHT, scale = 0.25}}
+                    {n=G.UIT.T, config={text = "Seed: " .. tostring((run.GAME.pseudorandom and run.GAME.pseudorandom.seed) or "Unknown"), align = "cl", colour = G.C.UI.TEXT_LIGHT, scale = 0.25}}
                }},
                {n=G.UIT.C, config={align = "cr", minw = ov_width/2.2}, nodes={
-                   {n=G.UIT.T, config={text = (run.date_str or ""), align = "cr", colour = G.C.UI.TEXT_LIGHT, scale = 0.25}}
+                   {n=G.UIT.T, config={text = tostring(run.date_str or ""), align = "cr", colour = G.C.UI.TEXT_LIGHT, scale = 0.25}}
                }}
            }},
 
@@ -136,7 +150,7 @@ function DV.HIST.get_run_overlay(run)
            (run.GAME.challenge and {n=G.UIT.R, config={minh = 0.05}, nodes={}} or nil),
            (run.GAME.challenge and
             {n=G.UIT.R, config={align = "cm"}, nodes={
-                {n=G.UIT.T, config={text = "'"..run.GAME.challenge_tab.name.."' Challenge", align = "cm", colour = G.C.UI.TEXT_LIGHT, scale = scale}}
+                {n=G.UIT.T, config={text = "'"..tostring(run.GAME.challenge_tab.name).."' Challenge", align = "cm", colour = G.C.UI.TEXT_LIGHT, scale = scale}}
             }} or nil),
 
           -- Main info:
@@ -171,7 +185,9 @@ function DV.HIST.get_run_summary_deck(run_data)
       {card_limit = 1, type = "deck", highlight_limit = 0, deck_height = 0.6, thin_draw = 1}
    )
 
-   G.GAME.viewed_back:change_to(G.P_CENTERS[run_data.BACK.key])
+   if run_data.BACK and run_data.BACK.key then
+      G.GAME.viewed_back:change_to(G.P_CENTERS[run_data.BACK.key])
+   end
 
    -- Populate deck, to add volume to its sprite:
    for i = 1, 10 do
@@ -201,25 +217,35 @@ function DV.HIST.get_run_summary_data(run_data, text_scale)
       local value_node =
          {n=G.UIT.C, config={align = "cl", minw = w_num}, nodes={
              (label == "Stake")
-                and {n=G.UIT.O, config={object = get_stake_sprite(run_data.GAME.stake, 0.4)}}
+                and {n=G.UIT.O, config={object = get_stake_sprite(run_data.GAME.stake or 1, 0.4)}}
                 or {n=G.UIT.T, config={text = value, align = "cl", colour = value_colour, scale = text_scale}}
          }}
 
       return {n=G.UIT.R, config={align = "cm"}, nodes={label_node, value_node}}
    end
 
+   local ante = run_data.GAME.round_resets and run_data.GAME.round_resets.ante or "?"
    -- Assuming that the parent node has `n=G.UIT.C`;
    -- use as: `{..., nodes = DV.HIST.get_run_summary_data(..)}`
    return {
-      get_label_and_value("Round", run_data.GAME.round, G.C.RED),
-      get_label_and_value("Ante", run_data.GAME.round_resets.ante, G.C.BLUE),
-      get_label_and_value("Money", "$"..run_data.GAME.dollars, G.C.MONEY),
+      get_label_and_value("Round", tostring(run_data.GAME.round or "?"), G.C.RED),
+      get_label_and_value("Ante", tostring(ante), G.C.BLUE),
+      get_label_and_value("Money", "$"..(DV.HIST.format_number(run_data.GAME.dollars or 0, 1e8)), G.C.MONEY),
       {n=G.UIT.R, config={minh = 0.1}, nodes={}},
       get_label_and_value("Stake", nil, nil)
    }
 end
 
 function DV.HIST.get_run_summary_blind(run_data, text_scale)
+   -- round_resets may be absent from old snapshots; skip the blind section if so:
+   if not run_data.GAME.round_resets or not run_data.GAME.round_resets.blind_states then
+      return {
+         {n=G.UIT.R, config={align = "cm", r = 0.1}, nodes={
+             {n=G.UIT.T, config={text = "Upcoming: Unknown", colour = G.C.UI.TEXT_LIGHT, scale = text_scale}}
+         }}
+      }
+   end
+
    local next_blind_key = DV.HIST.get_next_blind_key(run_data)
    local next_blind = G.P_BLINDS[next_blind_key]
 
@@ -283,7 +309,7 @@ function DV.HIST.get_run_summary_blind_description(run_data, next_blind_key, tex
                   }},
                   {n=G.UIT.C, config={minw = 0.05}, nodes={}},
                   {n=G.UIT.C, config={align = "cl"}, nodes={
-                      {n=G.UIT.T, config={text = blind_chips, colour = G.C.RED, scale = text_scale}}
+                      {n=G.UIT.T, config={text = DV.HIST.format_number(blind_chips, 1e8), colour = G.C.RED, scale = text_scale}}
                   }}
               }}
           }}
@@ -314,9 +340,10 @@ function DV.HIST.get_run_summary_jokers(run_data)
    local joker_scale = 0.5
    local joker_area = DV.HIST.create_cardarea(5, joker_scale)
 
-   for _, joker_data in ipairs(run_data.cardAreas.jokers.cards) do
+   local joker_cards = run_data.cardAreas and run_data.cardAreas.jokers and run_data.cardAreas.jokers.cards or {}
+   for _, joker_data in ipairs(joker_cards) do
       local c = DV.HIST.create_card(G.P_CARDS.empty, G.P_CENTERS[joker_data.save_fields.center], joker_scale)
-      c:set_edition(joker_data.edition, true, true)
+      c:set_edition(joker_data.edition)
       joker_area:emplace(c)
    end
    return joker_area
@@ -326,7 +353,8 @@ function DV.HIST.get_run_summary_consumables(run_data)
    local consumable_scale = 0.5
    local consumable_area = DV.HIST.create_cardarea(3, consumable_scale)
 
-   for _, consumable_data in ipairs(run_data.cardAreas.consumeables.cards) do
+   local consumable_cards = run_data.cardAreas and run_data.cardAreas.consumeables and run_data.cardAreas.consumeables.cards or {}
+   for _, consumable_data in ipairs(consumable_cards) do
       local c = DV.HIST.create_card(G.P_CARDS.empty, G.P_CENTERS[consumable_data.save_fields.center], consumable_scale)
       consumable_area:emplace(c)
    end
@@ -337,7 +365,7 @@ function DV.HIST.get_run_summary_vouchers(run_data)
    local voucher_scale = 0.5
    local voucher_area = DV.HIST.create_cardarea(3, voucher_scale)
 
-   for voucher_key, _ in pairs(run_data.GAME.used_vouchers) do
+   for voucher_key, _ in pairs(run_data.GAME.used_vouchers or {}) do
       local c = DV.HIST.create_card(G.P_CARDS.empty, G.P_CENTERS[voucher_key], voucher_scale)
       voucher_area:emplace(c)
    end
