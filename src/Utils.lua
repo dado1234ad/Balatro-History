@@ -100,7 +100,7 @@ end
 function DV.HIST.get_blind_chips(run_data, blind_key)
    local blind = G.P_BLINDS[blind_key]
    local chips = (blind.mult * run_data.GAME.starting_params.ante_scaling
-                   * get_blind_amount(run_data.GAME.round_resets.ante))
+                  * get_blind_amount(run_data.GAME.round_resets.ante))
    return chips
 end
 
