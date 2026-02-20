@@ -26,7 +26,6 @@ sources = [ "src/UI/BaseUI.lua", "src/UI/RunHistoryUI.lua", "src/UI/RunStorageUI
 target = "functions/button_callbacks.lua"
 position = "append"
 sources = [ "src/UI/ButtonCallbacks.lua" ]
-
 [[patches]]
 [patches.pattern]
 target = "functions/UI_definitions.lua"
@@ -62,5 +61,4 @@ overwrite = false
 payload = '''
 elseif request.type == 'store_run' then
   DV.HIST.execute_save_manager(request)
-  '''
-  
+'''
