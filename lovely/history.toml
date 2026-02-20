@@ -1,5 +1,5 @@
 [manifest]
-version = "1.0"
+version = "1.1"
 dump_lua = true
 priority = 5
 
@@ -7,37 +7,25 @@ priority = 5
 [patches.copy]
 target = "globals.lua"
 position = "append"
-sources = [
-  "src/Init.lua"
-]
+sources = [ "src/Init.lua" ]
 
 [[patches]]
 [patches.copy]
 target = "main.lua"
 position = "append"
-sources = [
-  "src/RunHistory.lua",
-  "src/RunStorage.lua",
-  "src/Utils.lua"
-]
+sources = [ "src/RunHistory.lua", "src/RunStorage.lua", "src/Utils.lua" ]
 
 [[patches]]
 [patches.copy]
 target = "functions/UI_definitions.lua"
 position = "append"
-sources = [
-  "src/UI/BaseUI.lua",
-  "src/UI/RunHistoryUI.lua",
-  "src/UI/RunStorageUI.lua"
-]
+sources = [ "src/UI/BaseUI.lua", "src/UI/RunHistoryUI.lua", "src/UI/RunStorageUI.lua" ]
 
 [[patches]]
 [patches.copy]
 target = "functions/button_callbacks.lua"
 position = "append"
-sources = [
-  "src/UI/ButtonCallbacks.lua"
-]
+sources = [ "src/UI/ButtonCallbacks.lua" ]
 
 [[patches]]
 [patches.pattern]
@@ -57,9 +45,6 @@ match_indent = true
 overwrite = false
 payload = "DV.HIST.queue_save_manager()"
 
-# Below are extensions to engine/save_manager.lua;
-# special considerations are needed, because the save manager runs on a thread.
-
 [[patches]]
 [patches.module]
 source = "src/SaveManager.lua"
@@ -67,17 +52,15 @@ before = "engine/save_manager.lua"
 name = "DV"
 load_now = true
 
-# TODO: `load_now` above is a stopgap solution to the lazy module loading introduced in Lovely v0.6.0
-# My hunch is that lazy loading breaks something due to the fact that save manager runs on a thread.
-
 [[patches]]
 [patches.pattern]
 target = "engine/save_manager.lua"
-pattern = "compress_and_save(prefix_profile..'save.jkr', request.save_table)"
+pattern = "tal_compress_and_save(prefix_profile..'save.jkr', request.save_table, request.talisman)"
 position = "after"
 match_indent = true
 overwrite = false
 payload = '''
 elseif request.type == 'store_run' then
   DV.HIST.execute_save_manager(request)
-'''
+  '''
+  
