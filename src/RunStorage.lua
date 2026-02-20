@@ -4,67 +4,67 @@
 
 -- The following is a customised version of functions/misc_functions.lua#save_run()
 function DV.HIST.store_run(store_type)
-      -- Do nothing if this is an autosave and autosaves are disabled:
-      if store_type == DV.HIST.STORAGE_TYPE.AUTO and not G.SETTINGS.DV.autosave then return end
+   -- Do nothing if this is an autosave and autosaves are disabled:
+   if store_type == DV.HIST.STORAGE_TYPE.AUTO and not G.SETTINGS.DV.autosave then return end
 
-      local card_areas = {}
-      for k, v in pairs(G) do
-            if (type(v) == "table") and v.is and v:is(CardArea) then
-                  local card_area = v:save()
-                  if card_area then card_areas[k] = card_area end
+   local card_areas = {}
+   for k, v in pairs(G) do
+      if (type(v) == "table") and v.is and v:is(CardArea) then
+         local card_area = v:save()
+         if card_area then card_areas[k] = card_area end
       end
    end
 
-      local tags = {}
-      for k, v in ipairs(G.GAME.tags) do
-            if (type(v) == "table") and v.is and v:is(Tag) then
-                  local tag = v:save()
-                  if tag then tags[k] = tag end
+   local tags = {}
+   for k, v in ipairs(G.GAME.tags) do
+      if (type(v) == "table") and v.is and v:is(Tag) then
+         local tag = v:save()
+         if tag then tags[k] = tag end
       end
    end
 
-      local history_data = {
-            history = DV.HIST.history,
-            view = DV.HIST.view,
-            latest = DV.HIST.latest
+   local history_data = {
+      history = DV.HIST.history,
+      view = DV.HIST.view,
+      latest = DV.HIST.latest
    }
 
-      G.ARGS.store_run = recursive_table_cull({
-               type_str = store_type,
-               date_str = os.date("%H:%M, %d %b %Y"),
-               cardAreas = card_areas,
-               tags = tags,
-               GAME = G.GAME,
-               STATE = G.STATE,
-               ACTION = G.action or nil,
-               BLIND = G.GAME.blind:save(),
-               SCORING_CALC = G.GAME.current_scoring_calculation and G.GAME.current_scoring_calculation:save() or nil,
-               BACK = G.GAME.selected_back:save(),
-               HISTORY = history_data,
-               VERSION = G.VERSION
-      })
+   G.ARGS.store_run = recursive_table_cull({
+      type_str = store_type,
+      date_str = os.date("%H:%M, %d %b %Y"),
+      cardAreas = card_areas,
+      tags = tags,
+      GAME = G.GAME,
+      STATE = G.STATE,
+      ACTION = G.action or nil,
+      BLIND = G.GAME.blind:save(),
+      SCORING_CALC = G.GAME.current_scoring_calculation and G.GAME.current_scoring_calculation:save() or nil,
+      BACK = G.GAME.selected_back:save(),
+      HISTORY = history_data,
+      VERSION = G.VERSION
+   })
 
-      G.FILE_HANDLER = G.FILE_HANDLER or {}
-      G.FILE_HANDLER.store_run = true
+   G.FILE_HANDLER = G.FILE_HANDLER or {}
+   G.FILE_HANDLER.store_run = true
 end
 
 -- The following function is injected into:
 --   game.lua#Game:update()
 -- near other FILE_HANDLER options; see lovely.toml for details.
 function DV.HIST.queue_save_manager()
-      if G.FILE_HANDLER.store_run then
-            G.SAVE_MANAGER.channel:push({
-                     type = "store_run",
-                     save_table = G.ARGS.store_run,
-                     profile_num = G.SETTINGS.profile,
-                     dv_settings = G.SETTINGS.DV,
-                     dv_paths = DV.HIST.PATHS,
-                     dv_types = DV.HIST.STORAGE_TYPE,
-                     talisman = (Talisman and Talisman.config_file and Talisman.config_file.break_infinity)
-         })
+   if G.FILE_HANDLER.store_run then
+      G.SAVE_MANAGER.channel:push({
+         type = "store_run",
+         save_table = G.ARGS.store_run,
+         profile_num = G.SETTINGS.profile,
+         dv_settings = G.SETTINGS.DV,
+         dv_paths = DV.HIST.PATHS,
+         dv_types = DV.HIST.STORAGE_TYPE,
+         talisman = (Talisman and Talisman.config_file and Talisman.config_file.break_infinity)
+      })
    end
 
-      G.FILE_HANDLER.store_run = nil
+   G.FILE_HANDLER.store_run = nil
 end
 
 --
@@ -74,26 +74,26 @@ end
 -- Autosave after round end, just when entering shop:
 DV.HIST._update_shop = Game.update_shop
 function Game:update_shop(dt)
-      DV.HIST._update_shop(self, dt)
+   DV.HIST._update_shop(self, dt)
 
-      if DV.HIST.autosave then
+   if DV.HIST.autosave then
+      G.E_MANAGER:add_event(Event({
+         -- This event is queued after all shop events;
+         -- however, shop events queue more events, so triggering a save
+         -- in this event will actually run before most shop events!
+         func = function()
             G.E_MANAGER:add_event(Event({
-                        -- This event is queued after all shop events;
-                        -- however, shop events queue more events, so triggering a save
-                        -- in this event will actually run before most shop events!
-                        func = function()
-                              G.E_MANAGER:add_event(Event({
-                                          -- Hence, this event is queued after all shop events are queued:
-                                          trigger = "after",
-                                          func = function()
-                                                DV.HIST.store_run(DV.HIST.STORAGE_TYPE.AUTO)
-                                                return true
-                           end
-                        }))
-                              return true
+               -- Hence, this event is queued after all shop events are queued:
+               trigger = "after",
+               func = function()
+                  DV.HIST.store_run(DV.HIST.STORAGE_TYPE.AUTO)
+                  return true
                end
             }))
-            DV.HIST.autosave = false
+            return true
+         end
+      }))
+      DV.HIST.autosave = false
    end
 end
 
@@ -102,65 +102,65 @@ end
 
 DV.HIST._end_round = end_round
 function end_round()
-      DV.HIST.autosave = true
+   DV.HIST.autosave = true
 
-      -- Must manually check for game win/loss, in order to
-      -- store run BEFORE the win/loss screen (so that it re-appears on run load):
-      local game_over_status = DV.HIST.is_game_over()
-      if game_over_status then
-            G.E_MANAGER:add_event(Event({
-                        trigger = "after",
-                        func = function()
-                              DV.HIST.store_run(game_over_status)
-                              return true
-               end
-            }))
-            DV.HIST.autosave = false
+   -- Must manually check for game win/loss, in order to
+   -- store run BEFORE the win/loss screen (so that it re-appears on run load):
+   local game_over_status = DV.HIST.is_game_over()
+   if game_over_status then
+      G.E_MANAGER:add_event(Event({
+         trigger = "after",
+         func = function()
+            DV.HIST.store_run(game_over_status)
+            return true
+         end
+      }))
+      DV.HIST.autosave = false
    end
 
-      DV.HIST._end_round()
+   DV.HIST._end_round()
 end
 
 function DV.HIST.is_game_over()
-      local round_beat = false
+   local round_beat = false
 
-      local function _compare(a, b)
-            if to_big then
-                  a = to_big(a)
-                  b = to_big(b)
-                  return a >= b
+   local function _compare(a, b)
+      if to_big then
+         a = to_big(a)
+         b = to_big(b)
+         return a >= b
       end
-            return a >= b
+      return a >= b
    end
 
-      local function _compare_ratio(a, b, ratio)
-            if to_big then
-                  a = to_big(a)
-                  b = to_big(b)
-                  return a / b >= to_big(ratio)
+   local function _compare_ratio(a, b, ratio)
+      if to_big then
+         a = to_big(a)
+         b = to_big(b)
+         return a / b >= to_big(ratio)
       end
-            return a / b >= ratio
+      return a / b >= ratio
    end
 
-      if _compare(G.GAME.chips, G.GAME.blind.chips) then
-            round_beat = true
+   if _compare(G.GAME.chips, G.GAME.blind.chips) then
+      round_beat = true
    else
-            -- Check for any saving graces:
-            -- TODO: Need a more generic way that doesn't have side-effects (for other mod effects)
-            for _, joker_obj in ipairs(G.jokers.cards) do
-                  if joker_obj.ability.name == "Mr. Bones" and _compare_ratio(G.GAME.chips, G.GAME.blind.chips, 0.25) then
-                        round_beat = true
+      -- Check for any saving graces:
+      -- TODO: Need a more generic way that doesn't have side-effects (for other mod effects)
+      for _, joker_obj in ipairs(G.jokers.cards) do
+         if joker_obj.ability.name == "Mr. Bones" and _compare_ratio(G.GAME.chips, G.GAME.blind.chips, 0.25) then
+            round_beat = true
          end
       end
    end
 
-      if round_beat then
-            if G.GAME.round_resets.ante == G.GAME.win_ante and G.GAME.blind:get_type() == 'Boss' then
-                  return DV.HIST.STORAGE_TYPE.WIN
+   if round_beat then
+      if G.GAME.round_resets.ante == G.GAME.win_ante and G.GAME.blind:get_type() == 'Boss' then
+         return DV.HIST.STORAGE_TYPE.WIN
       else
-                  return nil
+         return nil
       end
    else
-            return DV.HIST.STORAGE_TYPE.LOSS
+      return DV.HIST.STORAGE_TYPE.LOSS
    end
 end
