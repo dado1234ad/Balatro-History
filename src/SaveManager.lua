@@ -35,7 +35,7 @@ function DV.HIST.execute_save_manager(request)
       save_path = DV.HIST.manage_save(request, history_dir, file_name)
    end
 
-   compress_and_save(save_path, request.save_table)
+   tal_compress_and_save(save_path, request.save_table, request.talisman)
 end
 
 function DV.HIST.manage_save(request, history_dir, file_name)
@@ -114,7 +114,7 @@ end
 
 function DV.HIST.get_run_name(save_table)
    local seed = save_table.GAME.pseudorandom.seed
-   local runid = save_table.GAME.DV.run_id
+   local runid = save_table.GAME.DV.run_id or "unknown"
    return seed .."_".. runid
 end
 
