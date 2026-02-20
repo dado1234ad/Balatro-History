@@ -100,12 +100,17 @@ end
 function DV.HIST.get_blind_chips(run_data, blind_key)
    local blind = G.P_BLINDS[blind_key]
    local chips = (blind.mult * run_data.GAME.starting_params.ante_scaling
-                  * get_blind_amount(run_data.GAME.round_resets.ante))
+                   * get_blind_amount(run_data.GAME.round_resets.ante))
    return chips
 end
 
 function DV.HIST.format_number(num, switch_point)
-   if not num or type(num) ~= 'number' then return num or '' end
+   if not num then return '' end
+   if type(num) == 'table' then
+      -- Pass Talisman BigNumbers directly to the modded number formatter
+      return tostring(number_format(num))
+   end
+   if type(num) ~= 'number' then return num or '' end
    -- Start using e-notation earlier to reduce number length:
    if num >= switch_point then
       local x = string.format("%.4g",num)
